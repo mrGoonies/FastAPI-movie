@@ -1,7 +1,10 @@
-from fastapi import FastAPI, Path, Query
+from fastapi import Depends, FastAPI, Path, Query
 from fastapi.responses import HTMLResponse, JSONResponse
 from typing import List, Dict, Any
+from models.jwt_bearer import JWTBearer
 from models.movie import Movie
+from models.user import User
+from service.jwt_manager import create_token
 
 app = FastAPI()
 app.title = "Mi primer app"
@@ -52,6 +55,13 @@ list_of_movies = [
 ]
 
 
+@app.post("/login", tags=["auth"])
+def login(user: User):
+    if user.email == "admin@gmail.com" and user.password == "admin":
+        token_user: str = create_token(user.dict())
+        return token_user
+
+
 @app.get("/", tags=["home"])
 def index():
     return HTMLResponse("<h1>Welcome to my first app</h1>")
@@ -85,7 +95,7 @@ def get_movies_by_genre(genre: str = Query(min_length=5, max_length=20)):
     return {"Movies by category": list_genre_movie}
 
 
-@app.post("/movies", tags=["movies"])
+@app.post("/movies", tags=["movies"], dependencies=[Depends(JWTBearer())])  # type: ignore
 def add_movie(movie: Movie) -> Dict[str, Any]:
     try:
         list_of_movies.append(movie.dict())
